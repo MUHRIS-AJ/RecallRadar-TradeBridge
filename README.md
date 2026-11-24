@@ -25,3 +25,12 @@ python server.py
 Browser demo runs at http://localhost:8765. Optional FastMCP HTTP endpoint needs authentication before being made public.
 
 All operations are read-only, evidence-linked, human-reviewed. The system does not send recall alerts or conduct international commerce.
+
+### FDA food-recall option
+If the CPSC consumer-recall API is slow, you can separately search **FDA food enforcement** records (not a substitute for consumer product recall results):
+
+```bash
+python core.py RecallRadar "food:cheese"
+```
+
+Choose `RecallRadar` in the hosted UI and search `food:cheese`. Sources remain labeled as US FDA or CPSC. A matching product name does not verify the precise model, package or lot.
