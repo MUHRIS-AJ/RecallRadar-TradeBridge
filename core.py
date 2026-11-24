@@ -5,7 +5,33 @@ from transport import request_json, SourceError
 
 SERVICES=["RecallRadar","TradeBridge"]
 CPSC="https://www.saferproducts.gov/RestWebServices/Recall"
+FDA="https://api.fda.gov/food/enforcement.json"
 WORLD="https://api.worldbank.org/v2/country/"
+
+def food_recalls(product: str):
+    """Search official openFDA food enforcement records (food:<name>)."""
+    if not re.fullmatch(r"[\w .,\-]{2,80}", product, re.UNICODE):
+        raise ValueError("Use a food item name of 2–80 characters.")
+    data=request_json(FDA, params={"search":'product_description:"'+product.strip()+'"', "limit":20})
+    records=data.get("results") or []
+    if not isinstance(records,list):
+        raise SourceError("openFDA returned an unexpected response.")
+    rows=[]
+    for e in records[:20]:
+        number=e.get("recall_number")
+        if not number:continue
+        rows.append({"recall_number":number, "title":e.get("product_description"),
+                     "reason":e.get("reason_for_recall"),"recall_date":e.get("report_date"),
+                     "status":e.get("status"),"official_provider":"US FDA",
+                     "url":"https://open.fda.gov/apis/food/enforcement/",
+                     "product_match_requires_review":True})
+    return {"project":"RecallRadar","mode":"FDA food enforcement","query":product,
+            "count":len(rows),"recalls":rows,"source":FDA,
+            "agents":["Discover: openFDA food enforcement","Analyze: product description",
+            "Verify: agency and recall number","Report: source-linked records"],
+            "limitations":["US FDA reports are not a complete global recall registry.",
+                "A matching name does not prove a specific package or lot is affected.",
+                "Consult official FDA notices and product identifiers before acting."]}
 
 def recalls(product: str):
     if not isinstance(product,str) or not 2 <= len(product.strip()) <= 90 or not re.fullmatch(r"[\w .,\-]+",product,re.UNICODE):
@@ -67,7 +93,8 @@ def trade(countries: str):
                        "No import tariffs, country regulations, HS codes or buyer demand included."]}
 
 def run(query:str,service:str="RecallRadar"):
-    if service=="RecallRadar":return recalls(query)
+    if service=="RecallRadar":
+        return food_recalls(query[5:].strip()) if query.lower().startswith("food:") else recalls(query)
     if service=="TradeBridge":return trade(query)
     raise ValueError("Unknown service.")
 
